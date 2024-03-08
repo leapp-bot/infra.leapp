@@ -5,42 +5,41 @@
     entry_title_pattern: Leapp detected loaded kernel drivers which have been removed in RHEL \d+. Upgrade cannot proceed.
   block:
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Check that the leapp-report.json exists
-      ansible.builtin.stat:
+      stat:
         path: "{{ leapp_report_location }}"
       register: leapp_report_stat
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | End execution of playbook if leapp report does not exist
-      ansible.builtin.meta: end_host
+      meta: end_host
       when: leapp_report_stat.stat.exists is false
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Read leapp report
-      ansible.builtin.slurp:
+      slurp:
         src: "{{ leapp_report_location }}"
       register: leappreport
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Parse leapp report to json
-      ansible.builtin.set_fact:
+      set_fact:
         leappreportdata: "{{ leappreport.content | b64decode | from_json }}"
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Find entry in leapp report
-      ansible.builtin.set_fact:
+      set_fact:
         leapp_entry: "{{ item }}"
       loop: "{{ leappreportdata.entries }}"
       when: item.title is match(entry_title_pattern)
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Parse summary to obtain list of modules
-      ansible.builtin.set_fact:
+      set_fact:
         unsupported_modules: "{{ leapp_entry.summary | regex_findall('(?<=- ).*') }}"
       when: leapp_entry is defined
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Print unsupported modules
-      ansible.builtin.debug:
+      debug:
         var: unsupported_modules
 
     - name: LEAPP_LOADED_REMOVED_KERNEL_DRIVERS | Unload unsupported modules
-      ansible.builtin.command: modprobe -r "{{ item }}"
+      command: modprobe -r "{{ item }}"
       loop: "{{ unsupported_modules }}"
       when: unsupported_modules is defined
-      changed_when: unsupported_modules is defined
 
 ...
